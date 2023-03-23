@@ -9,9 +9,14 @@ import java.util.Set;
 import java.util.UUID;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.RequestEntity;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.validation.FieldError;
 import org.springframework.validation.ObjectError;
+import org.springframework.web.client.RestTemplate;
+import org.springframework.web.util.UriComponentsBuilder;
 
 import jakarta.validation.Valid;
 import nus.edu.sg.iss.app.PizzaOrdering.model.Delivery;
@@ -32,6 +37,9 @@ public class PizzaSvc {
     //for frontend drop down 
     private final Set<String> pizzaName;
     private final Set<String> pizzaSize; 
+
+    @Value("${revision.pizza.api.url}")
+    private String restPizzaUrl;
 
     public PizzaSvc(){
         pizzaName = new HashSet<String>(Arrays.asList(PIZZA_NAME));
@@ -97,6 +105,20 @@ public class PizzaSvc {
         calculateCost(o);
         pizzaRepo.save(o);
         return o;
+    }
+
+    public Optional<Order> getOrderDetails(String orderId){
+        String url = UriComponentsBuilder.fromUriString(this.restPizzaUrl + orderId)
+                                        .toString(); 
+        RequestEntity req = RequestEntity.get(url).build();
+
+        RestTemplate template = new RestTemplate(); 
+        ResponseEntity<String> resp = template.exchange(req, String.class);
+        Order o = Order.create(resp.getBody());
+        if(null == o){
+            return Optional.empty();
+        }
+        return Optional.of(o);
     }
 
 }
